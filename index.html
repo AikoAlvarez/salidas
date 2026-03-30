@@ -23,7 +23,7 @@
 <body>
 
 <div class="app-container">
-    <h1 style="color: #52525b; font-size: 1rem; letter-spacing: 3px; margin-bottom: 20px;">SPRINT START </h1>
+    <h1 style="color: #52525b; font-size: 1rem; letter-spacing: 3px; margin-bottom: 20px;">SPRINT START</h1>
 
     <div class="glass-card">
         <div class="input-box"><span>Preparation (s)</span><input type="number" id="p" value="5"></div>
@@ -45,25 +45,42 @@
     const voice = window.speechSynthesis;
     const btn = document.getElementById('go');
 
-    function init() {
-        if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
-        if (actx.state === 'suspended') actx.resume();
+    // Función para inicializar audio al primer clic
+    function initAudio() {
+        if (!actx) {
+            actx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (actx.state === 'suspended') {
+            actx.resume();
+        }
+        // Desbloqueo de voz con mensaje vacío
+        voice.cancel();
         voice.speak(new SpeechSynthesisUtterance(""));
     }
 
-    function beep(f, d, v=0.1) {
-        const o = actx.createOscillator(); const g = actx.createGain();
-        o.frequency.value = f; g.gain.setValueAtTime(v, actx.currentTime);
+    function beep(f, d, v = 0.1) {
+        if (!actx) return;
+        const o = actx.createOscillator();
+        const g = actx.createGain();
+        o.frequency.setValueAtTime(f, actx.currentTime);
+        g.gain.setValueAtTime(v, actx.currentTime);
         g.gain.exponentialRampToValueAtTime(0.01, actx.currentTime + d);
-        o.connect(g); g.connect(actx.destination); o.start(); o.stop(actx.currentTime + d);
+        o.connect(g);
+        g.connect(actx.destination);
+        o.start();
+        o.stop(actx.currentTime + d);
     }
 
     function say(t) {
-        voice.cancel(); const m = new SpeechSynthesisUtterance(t);
-        m.lang = 'en-US'; m.rate = 1.0; voice.speak(m);
+        voice.cancel();
+        const m = new SpeechSynthesisUtterance(t);
+        m.lang = 'en-US';
+        m.rate = 1.0;
+        voice.speak(m);
     }
 
     function fire() {
+        if (!actx) return;
         const bufferSize = actx.sampleRate * 0.5;
         const buffer = actx.createBuffer(1, bufferSize, actx.sampleRate);
         const data = buffer.getChannelData(0);
@@ -71,6 +88,7 @@
 
         const noise = actx.createBufferSource();
         noise.buffer = buffer;
+
         const filter = actx.createBiquadFilter();
         filter.type = 'lowpass';
         filter.frequency.setValueAtTime(800, actx.currentTime);
@@ -79,50 +97,63 @@
         gain.gain.setValueAtTime(2.5, actx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + 0.4);
 
-        noise.connect(filter); filter.connect(gain); gain.connect(actx.destination);
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(actx.destination);
+
         noise.start();
         if (navigator.vibrate) navigator.vibrate([500, 100, 500]);
     }
 
     btn.onclick = async () => {
-        init(); btn.disabled = true;
+        initAudio();
+        btn.disabled = true;
+
         const prep = parseInt(document.getElementById('p').value);
         const marks = parseFloat(document.getElementById('m').value) * 1000;
         const minVal = parseFloat(document.getElementById('min').value) * 1000;
         const maxVal = parseFloat(document.getElementById('max').value) * 1000;
         const hold = Math.floor(Math.random() * (maxVal - minVal + 1)) + minVal;
 
+        // PREP
         document.getElementById('status').innerText = "PREP";
         document.getElementById('indicator').style.borderColor = "#3b82f6";
         for (let i = prep; i > 0; i--) {
             document.getElementById('indicator').innerText = i;
-            beep(1000, 0.1); await new Promise(r => setTimeout(r, 1000));
+            beep(1000, 0.1); 
+            await new Promise(r => setTimeout(r, 1000));
         }
         
         document.getElementById('indicator').innerText = "";
-        beep(500, 0.4, 0.2); await new Promise(r => setTimeout(r, 600));
+        beep(500, 0.4, 0.2); 
+        await new Promise(r => setTimeout(r, 600));
 
+        // ON YOUR MARKS
         document.getElementById('status').innerText = "ON YOUR MARKS";
         document.getElementById('indicator').style.borderColor = "#fbbf24";
         say("On your marks"); 
         await new Promise(r => setTimeout(r, marks));
 
+        // SET
         document.getElementById('status').innerText = "SET";
         document.getElementById('indicator').style.borderColor = "#f97316";
         say("Set"); 
         await new Promise(r => setTimeout(r, hold));
 
+        // GO!
         document.getElementById('status').innerText = "GO!";
         document.getElementById('indicator').style.borderColor = "#ff4757";
         document.getElementById('indicator').style.backgroundColor = "#ff4757";
         fire();
 
         const log = document.createElement('div');
-        log.className = 'log'; log.innerHTML = `<span>Trial #${document.getElementById('logs').children.length+1}</span> <b>${(hold/1000).toFixed(2)}s hold</b>`;
+        log.className = 'log'; 
+        log.innerHTML = `<span>Trial #${document.getElementById('logs').children.length+1}</span> <b>${(hold/1000).toFixed(2)}s hold</b>`;
         document.getElementById('logs').prepend(log);
 
         setTimeout(() => {
-            btn.disabled = false; document.getElementById('status').innerText = "READY";
+            btn.disabled = false; 
+            document.getElementById('status').innerText = "READY";
             document.getElementById('indicator').style.borderColor = "#23232b";
             document.getElementById('indicator').style.backgroundColor = "transparent";
         }, 3000);
