@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sprint Trainer </title>
+    <style>
+        :root { --bg: #0b121e; --accent: #10b981; --warning: #f59e0b; --danger: #ef4444; --prep: #3b82f6; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: white; text-align: center; margin: 0; padding: 15px; }
+        .container { max-width: 450px; margin: auto; }
+        .config-card { background: #1e293b; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #334155; }
+        .input-group { margin: 10px 0; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; }
+        input { width: 60px; padding: 6px; border-radius: 5px; border: none; text-align: center; font-weight: bold; background: #334155; color: white; }
+        
+        #indicator { width: 150px; height: 150px; border-radius: 50%; margin: 25px auto; background: #1e293b; border: 6px solid #000; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; font-weight: bold; }
+        #status { font-size: 2rem; font-weight: 900; height: 45px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+        
+        button { width: 100%; padding: 20px; font-size: 1.4rem; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; transition: all 0.2s; }
+        .btn-start { background: var(--accent); color: #064e3b; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); }
+        button:disabled { opacity: 0.4; }
+        
+        .history { margin-top: 20px; text-align: left; background: #111827; padding: 12px; border-radius: 8px; max-height: 150px; overflow-y: auto; font-size: 0.85rem; border: 1px solid #1f2937; }
+        .log-item { font-family: monospace; border-bottom: 1px solid #1f2937; padding: 4px 0; display: flex; justify-content: space-between; color: #9ca3af; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 style="color: #94a3b8; margin-bottom: 15px;">SPRINT START </h2>
+
+    <div class="config-card">
+        <div class="input-group">
+            <label>Preparation Time (sec):</label>
+            <input type="number" id="prepTime" value="5" min="1">
+        </div>
+        <div class="input-group">
+            <label>Time to "Marks" (sec):</label>
+            <input type="number" id="timeToSet" value="15.0" step="0.1" min="1">
+        </div>
+        <div class="input-group">
+            <label>Set-Go Range (sec):</label>
+            <div>
+                <input type="number" id="minGo" value="1.5" step="0.1" min="0.5"> - 
+                <input type="number" id="maxGo" value="3.0" step="0.1" min="1.0">
+            </div>
+        </div>
+    </div>
+
+    <div id="status">READY</div>
+    <div id="indicator"></div>
+
+    <button class="btn-start" id="mainBtn" onclick="runSequence()">START</button>
+
+    <div class="history">
+        <div id="logList"></div>
+    </div>
+</div>
+
+<script>
+    const statusDiv = document.getElementById('status');
+    const indicator = document.getElementById('indicator');
+    const logList = document.getElementById('logList');
+    const mainBtn = document.getElementById('mainBtn');
+    const synth = window.speechSynthesis;
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    // Función para generar pitidos electrónicos
+    function playBeep(frequency, duration) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+    }
+
+    function speak(text) {
+        if (synth.speaking) synth.cancel();
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.lang = 'en-US';
+        msg.rate = 1.1;
+        synth.speak(msg);
+    }
+
+    function playGunshot() {
+        const bufferSize = audioCtx.sampleRate * 0.5;
+        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+        const noiseSource = audioCtx.createBufferSource();
+        noiseSource.buffer = buffer;
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(850, audioCtx.currentTime); 
+
+        const gainNode = audioCtx.createGain();
+        gainNode.gain.setValueAtTime(2.5, audioCtx.currentTime); 
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+
+        noiseSource.connect(filter);
+        filter.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        noiseSource.start();
+        if ("vibrate" in navigator) navigator.vibrate(600);
+    }
+
+    async function runSequence() {
+        mainBtn.disabled = true;
+        const prepSeconds = parseInt(document.getElementById('prepTime').value);
+        
+        // --- FASE 0: PREPARACIÓN CON PITIDOS ---
+        statusDiv.innerText = "GET READY";
+        indicator.style.backgroundColor = "#3b82f6";
+        
+        for (let i = prepSeconds; i > 0; i--) {
+            indicator.innerText = i;
+            playBeep(880, 0.1); // Pitido agudo (High beep)
+            await new Promise(r => setTimeout(r, 1000));
+        }
+        
+        // Pitido de inicio de secuencia
+        playBeep(440, 0.3); // Pitido más largo y grave (Start beep)
+        indicator.innerText = "";
+
+        const toSet = parseFloat(document.getElementById('timeToSet').value) * 1000;
+        const minGo = parseFloat(document.getElementById('minGo').value) * 1000;
+        const maxGo = parseFloat(document.getElementById('maxGo').value) * 1000;
+        const randomGo = Math.floor(Math.random() * (maxGo - minGo + 1) + minGo);
+
+        // --- FASE 1: ON YOUR MARKS ---
+        statusDiv.innerText = "On your marks";
+        indicator.style.backgroundColor = "#fbbf24"; 
+        speak("On your marks");
+        await new Promise(r => setTimeout(r, toSet));
+
+        // --- FASE 2: SET ---
+        statusDiv.innerText = "Set";
+        indicator.style.backgroundColor = "#f97316"; 
+        speak("Set");
+        await new Promise(r => setTimeout(r, randomGo));
+
+        // --- FASE 3: GO! ---
+        statusDiv.innerText = "GO!";
+        indicator.style.backgroundColor = "#ef4444"; 
+        playGunshot();
+
+        const item = document.createElement('div');
+        item.className = 'log-item';
+        item.innerHTML = `<span>Trial #${logList.children.length + 1}</span> <b>${(randomGo/1000).toFixed(2)}s hold</b>`;
+        logList.prepend(item);
+
+        setTimeout(() => {
+            mainBtn.disabled = false;
+            statusDiv.innerText = "READY";
+            indicator.style.backgroundColor = "#1e293b";
+        }, 3000);
+    }
+</script>
+
+</body>
+</html>
