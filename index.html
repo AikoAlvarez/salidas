@@ -12,7 +12,7 @@
         .input-box { display: flex; justify-content: space-between; align-items: center; margin: 15px 0; font-size: 0.9rem; color: #a1a1aa; }
         input { background: #23232b; border: 1px solid #3f3f46; color: var(--primary); padding: 8px; border-radius: 10px; width: 60px; text-align: center; font-weight: bold; font-size: 1rem; }
         #indicator { width: 180px; height: 180px; border-radius: 50%; margin: 30px auto; background: #16161a; border: 10px solid #23232b; display: flex; align-items: center; justify-content: center; font-size: 5rem; font-weight: 900; transition: all 0.1s; }
-        #status { font-size: 2.2rem; font-weight: 800; height: 60px; margin-bottom: 5px; letter-spacing: -1px; }
+        #status { font-size: 2.1rem; font-weight: 800; height: 60px; margin-bottom: 5px; letter-spacing: -1px; }
         .btn-main { width: 100%; padding: 24px; font-size: 1.5rem; border: none; border-radius: 20px; cursor: pointer; font-weight: bold; background: var(--primary); color: #000; box-shadow: 0 0 20px rgba(0, 255, 136, 0.2); transition: 0.2s; }
         .btn-main:active { transform: scale(0.96); }
         .btn-main:disabled { background: #3f3f46; color: #71717a; box-shadow: none; }
@@ -23,7 +23,7 @@
 <body>
 
 <div class="app-container">
-    <h1 style="color: #52525b; font-size: 1rem; letter-spacing: 3px; margin-bottom: 20px;">SPRINT START</h1>
+    <h1 style="color: #52525b; font-size: 1rem; letter-spacing: 3px; margin-bottom: 20px;">SPRINT START </h1>
 
     <div class="glass-card">
         <div class="input-box"><span>Preparation (s)</span><input type="number" id="p" value="5"></div>
@@ -63,7 +63,6 @@
         m.lang = 'en-US'; m.rate = 1.0; voice.speak(m);
     }
 
-    // DISPARO INTENSO (RUIDO BLANCO FILTRADO)
     function fire() {
         const bufferSize = actx.sampleRate * 0.5;
         const buffer = actx.createBuffer(1, bufferSize, actx.sampleRate);
@@ -72,7 +71,6 @@
 
         const noise = actx.createBufferSource();
         noise.buffer = buffer;
-
         const filter = actx.createBiquadFilter();
         filter.type = 'lowpass';
         filter.frequency.setValueAtTime(800, actx.currentTime);
@@ -81,10 +79,7 @@
         gain.gain.setValueAtTime(2.5, actx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + 0.4);
 
-        noise.connect(filter);
-        filter.connect(gain);
-        gain.connect(actx.destination);
-
+        noise.connect(filter); filter.connect(gain); gain.connect(actx.destination);
         noise.start();
         if (navigator.vibrate) navigator.vibrate([500, 100, 500]);
     }
@@ -109,11 +104,13 @@
 
         document.getElementById('status').innerText = "ON YOUR MARKS";
         document.getElementById('indicator').style.borderColor = "#fbbf24";
-        say("On your marks"); await new Promise(r => setTimeout(r, marks));
+        say("On your marks"); 
+        await new Promise(r => setTimeout(r, marks));
 
         document.getElementById('status').innerText = "SET";
         document.getElementById('indicator').style.borderColor = "#f97316";
-        say("Set"); await new Promise(r => setTimeout(r, hold));
+        say("Set"); 
+        await new Promise(r => setTimeout(r, hold));
 
         document.getElementById('status').innerText = "GO!";
         document.getElementById('indicator').style.borderColor = "#ff4757";
